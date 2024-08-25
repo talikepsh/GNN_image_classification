@@ -6,6 +6,20 @@ from torch_geometric.nn import SAGEConv
 import torch.nn.functional as F
 
 def get_metrics(x: torch.tensor, is_initialized: bool):
+    """
+    This function either loads a precomputed dictionary of similarity/distance matrices from a 
+    file or computes these matrices using various metrics. It's main function is to save running
+    time when running test on the same metric (every metric should be computed once).
+    
+    Args:
+        x: A 2D tensor of shape (num_nodes, num_features) representing the node features.
+        is_initialized: A flag indicating whether to load a precomputed dictionary of 
+                        similarity/distance matrices  or to compute the matrices.
+
+    Returns:
+            A dictionary where keys are metric names and values are the corresponding 2D 
+            arrays containing similarity/distance values between nodes.
+    """
     if is_initialized:
         with open('metrics_dict.pkl', 'rb') as f:
             return pkl.load(f)
