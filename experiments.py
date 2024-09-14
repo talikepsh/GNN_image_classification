@@ -1,5 +1,5 @@
-from generate_results import *
-from generate_graph import *
+from train_test_main_run import *
+from graph_construction import *
 from scores_analysis import *
 import pandas as pd
 import torch
@@ -7,8 +7,22 @@ import numpy as np
 import pickle
 
 def get_thresholds(average_scores):
-    '''the function receives a dictionary of dictionaries with average scores
-    of the similarities between the different classes and returns the thresholds list'''
+    """
+    This function receives a dictionary where each key corresponds to a class, and its value is a 
+    nested dictionary containing average similarity scores between that class and other classes. 
+    The function extracts the self-similarity score (score of a class with itself) for each class, 
+    and calculates an extended range of thresholds by adding small margins below the minimum and 
+    above the maximum self-similarity score.
+
+    Args:
+        average_scores: A dictionary where each key is a class name and the corresponding 
+                        value is another dictionary containing the average similarity 
+                        scores between that class and other classes.
+
+    Returns:
+        thresholds: A sorted list of threshold values including margins around the 
+                    minimum and maximum self-similarity scores.
+    """
     min_val = float('inf')
     max_val = float('-inf')
     thresholds = []
@@ -24,6 +38,22 @@ def get_thresholds(average_scores):
 
 
 def get_results(data_df, metrics_and_thresholds, seeds, ):
+    """
+    For each metric in `metrics_and_thresholds`, this function iterates over the threshold values 
+    and seeds, computes validation and test accuracy, and stores the results. It also temporarily 
+    saves the results in a pickle file for backup purposes.
+
+    Args:
+        data_df: The input dataset containing image embeddings and class labels.
+        metrics_and_thresholds: A dictionary where the key is a metric ('euclidean', 
+                                'cosine') and the value is a list of threshold values.
+        seeds: A list of random seeds to ensure reproducibility across multiple runs.
+
+    Returns:
+        A DataFrame containing the validation and test accuracy results for each 
+        metric, threshold, and seed combination.
+    """
+
     results = {'metric':[], 'threshold':[], 'seed':[]}
     for i in range(11):
         results[f'val{i+1}'] = []
@@ -49,6 +79,17 @@ def get_results(data_df, metrics_and_thresholds, seeds, ):
     return df_results
                     
 def main():
+    """
+    The main function that utilize graph construction, similarity score computation, and 
+    threshold-based evaluation of accuracy.
+
+    - Loads the dataset containing image embeddings.
+    - Constructs node features from the embeddings.
+    - Calculates similarity scores for various metrics.
+    - Determines appropriate thresholds for each metric based on self-similarity scores.
+    - Evaluates model performance using different thresholds and seeds.
+    - Saves the results in a CSV file.
+    """
     data_df = pd.read_csv('imagenet_embeddings.csv')
     metrics_and_thresholds = {'euclidian':[], 'max_norm':[], 'city_block':[], 'cosine':[], 'chord':[]}
     seeds = [1,2,3,4,5]
@@ -65,4 +106,4 @@ def main():
     results.to_csv('results.csv', index=False)             
                 
 if __name__ == '__main__':
-    main()              
+    main()
