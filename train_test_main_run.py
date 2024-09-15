@@ -1,6 +1,6 @@
 import torch
 import pickle as pkl
-from generate_graph import *
+from graph_construction import *
 from torch_geometric.data import Data
 from torch_geometric.nn import SAGEConv, GCNConv, SGConv, GINConv
 import torch.nn.functional as F
