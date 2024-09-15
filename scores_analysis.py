@@ -95,7 +95,7 @@ def plotting_boxplot(scores: dict):
 
     This function displays the boxplots using Matplotlib and does not return any value.
 """
-    fig, axis = plt.subplots(2, 2, figsize=(15, 15))
+    fig, axis = plt.subplots(2, 2, figsize=(11, 8))
     classes_names = list(scores.keys())
     n_classes = len(classes_names)
     class_list = []

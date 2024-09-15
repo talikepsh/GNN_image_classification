@@ -23,18 +23,20 @@ def get_thresholds(average_scores):
     return thresholds
 
 
-def get_results(data_df, metrics_and_thresholds, seeds, ):
+def get_results(data_df, metrics_and_thresholds, seeds):
     results = {'metric':[], 'threshold':[], 'seed':[]}
     for i in range(11):
         results[f'val{i+1}'] = []
         results[f'test{i+1}'] = []
+        
+    file_name = 'dict_results'    
     for metric, thresholds in metrics_and_thresholds.items():
         for lower_threshold in thresholds:
             for seed in seeds:
                 print(f'metric: {metric}, threshold: {lower_threshold}, seed: {seed}') 
                 torch.cuda.empty_cache()
                 val_acc_lst, test_acc_lst = get_accuracy\
-                    (data_df, metric, seed, lower_threshold, float('inf'), True)
+                    (data_df, metric, seed, lower_threshold, float('inf'), 'GraphSAGE', True)
                 results['metric'].append(metric)
                 results['threshold'].append(lower_threshold)
                 results['seed'].append(seed)
@@ -42,8 +44,9 @@ def get_results(data_df, metrics_and_thresholds, seeds, ):
                     results[f'val{i+1}'].append(val_acc)
                     results[f'test{i+1}'].append(test_acc)
          
-        print('temporarily saving resultd')           
-        with open('dict_temp_results.pkl', 'wb') as file:
+        file_name += f'_{metric}' 
+        print('temporarily saving results')           
+        with open(f'{file_name}.pkl', 'wb') as file:
             pickle.dump(results, file)                
     df_results = pd.DataFrame(results)
     return df_results
