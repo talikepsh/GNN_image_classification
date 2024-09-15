@@ -1,5 +1,5 @@
-from generate_results import *
-from generate_graph import *
+from train_test_main_run import *
+from graph_construction import *
 from scores_analysis import *
 import pandas as pd
 import torch
