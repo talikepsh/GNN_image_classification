@@ -41,6 +41,8 @@ scores_analysis.py: Performs analysis of the different similarity scores between
 
 train_test_main_run.py: The main script that runs the GNN on the constructed graph, evaluates it using different metrics, seeds, and thresholds, and returns the classification accuracy results.
 
+architecture_selection.py: This script runs experiments with different Graph Neural Network (GNN) architectures (like GCN and GIN) on a graph constructed from image embeddings, based on various similarity metrics (e.g., chord, max norm, city block) and thresholds. It evaluates each combination of metric, threshold, and model across different random seeds and saves the results for analysis.
+
 ## Data and Results Files
 imagenet_embeddings.csv: The CSV file containing the embeddings (feature vectors) of the images after processing through the CNN. This is the input dataset for the graph construction.
 
