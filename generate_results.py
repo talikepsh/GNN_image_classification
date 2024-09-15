@@ -2,8 +2,9 @@ import torch
 import pickle as pkl
 from generate_graph import *
 from torch_geometric.data import Data
-from torch_geometric.nn import SAGEConv
+from torch_geometric.nn import SAGEConv, GCNConv, SGConv, GINConv
 import torch.nn.functional as F
+from torch.nn import Sequential, Linear, ReLU
 
 def get_metrics(x: torch.tensor, is_initialized: bool):
     """
@@ -42,9 +43,60 @@ class GraphSAGE(torch.nn.Module):
         x = F.relu(self.conv2(x, edge_index))
         x = self.conv3(x, edge_index)
         return F.log_softmax(x, dim=1)
+    
+class GIN(torch.nn.Module):
+    def __init__(self, hidden_channels, output_dim, seed=1):
+        super().__init__()
+        torch.cuda.manual_seed(seed)
+        
+        self.conv1 = GINConv(
+            Sequential(
+                Linear(hidden_channels, hidden_channels//2), torch.nn.Tanh(),
+                Linear(hidden_channels//2, hidden_channels//2)
+            )
+        )
+        self.conv2 = GINConv(
+            Sequential(
+                Linear(hidden_channels//2, hidden_channels//4), torch.nn.Tanh(),
+                Linear(hidden_channels//4, hidden_channels//4)
+            )
+        )
+        self.conv3 = GINConv(
+            Sequential(
+                Linear(hidden_channels//4, output_dim)
+            )
+        )
+
+        self.input_proj = torch.nn.Linear(hidden_channels, output_dim)
+
+    def forward(self, x, edge_index):
+        x_res = self.input_proj(x)
+        x = F.relu(self.conv1(x, edge_index))
+        x = F.relu(self.conv2(x, edge_index))
+        x = self.conv3(x, edge_index)
+        return F.log_softmax(x+x_res, dim=1)
+
+class GCN(torch.nn.Module):
+    def __init__(self, hidden_channels, output_dim, seed=1):
+        super().__init__()
+        torch.cuda.manual_seed(seed)
+        self.conv1 = GCNConv(hidden_channels, hidden_channels//2, normalize=True)
+        self.conv2 = GCNConv(hidden_channels//2, hidden_channels//4, normalize=True)
+        self.conv3 = GCNConv(hidden_channels//4, output_dim, normalize=True)
+        self.input_proj = torch.nn.Linear(hidden_channels, output_dim)
+
+    def forward(self, x, edge_index):
+        x_res = self.input_proj(x)
+        x = F.relu(self.conv1(x, edge_index))
+        x = F.relu(self.conv2(x, edge_index))
+        x = self.conv3(x, edge_index)
+        return F.log_softmax(x+x_res, dim=1)
 
 
-def get_accuracy(data_df: pd.DataFrame, metric: str, seed, lower_threshold, upper_threshold, is_initialized=True):
+
+def get_accuracy(data_df: pd.DataFrame, metric: str, seed, lower_threshold, upper_threshold, chosen_model, is_initialized=True):
+    models = {'GraphSAGE':GraphSAGE, 'GIN':GIN,'GCN':GCN}
+    lr_for_model = {'GraphSAGE':0.0005, 'GIN':0.1,'GCN':0.05}
     x, y, edges = construct_graph(data_df, [metric, lower_threshold, upper_threshold], is_initialized)
     train_indeces = list(range(0,400)) + list(range(500,900)) + list(range(1000,1400)) + list(range(1500,1900))
     valid_indeces = list(range(400,450)) + list(range(900,950)) + list(range(1400,1450)) + list(range(1900,1950))
@@ -56,24 +108,27 @@ def get_accuracy(data_df: pd.DataFrame, metric: str, seed, lower_threshold, uppe
 
     output_dim = len(set(data.y.tolist()))
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = GraphSAGE(x.shape[1], output_dim, seed).to(device)
+    model = models[chosen_model](x.shape[1], output_dim, seed).to(device)
     data = data.to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0005, weight_decay=5e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr_for_model[chosen_model], weight_decay=5e-4)
 
     def train():
         model.train()
         optimizer.zero_grad()
-        F.nll_loss(model(data.x, data.edge_index)[train_mask], data.y[train_mask]).backward()
+        loss = F.nll_loss(model(data.x, data.edge_index)[train_mask], data.y[train_mask])
+        loss.backward()
         optimizer.step()
+        torch.cuda.empty_cache()
 
     def test():
         model.eval()
-        logits = model(data.x, data.edge_index)
-        accs = []
-        for mask in [train_mask, valid_mask, test_mask]:
-            pred = logits[mask].max(1)[1]
-            acc = pred.eq(data.y[mask]).sum().item() / mask.sum().item()
-            accs.append(acc)
+        with torch.no_grad():
+            logits = model(data.x, data.edge_index)
+            accs = []
+            for mask in [train_mask, valid_mask, test_mask]:
+                pred = logits[mask].max(1)[1]
+                acc = pred.eq(data.y[mask]).sum().item() / mask.sum().item()
+                accs.append(acc)
         return accs
     
     best_val_acc = test_acc = 0
