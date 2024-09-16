@@ -50,8 +50,6 @@ dict_results_city_block_cosine.pkl, dict_results_city_block_cosine_chord.pkl, di
 
 metrics_dict.pkl: A pickle file storing precomputed metrics (e.g., similarity/distance scores between images) to avoid recalculating them during each run.
 
-results.csv: The final CSV file containing the results of the GNN experiments, including validation and test accuracy for each combination of metric, threshold, and seed.
-
 ## Additional Files
 dict_results_city_block_cosine.pkl, dict_results_city_block_cosine_chord.pkl, dict_results_euclidian_max_norm.pkl, dict_results_architecture.pkl: Pickle files storing the results of various experimental runs using different metrics and models.
 
